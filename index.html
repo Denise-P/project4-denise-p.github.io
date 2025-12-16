@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple Map</title>
+    <link rel="stylesheet" type="text/css" href="menuStyle.css" />
+    <script src="mapProject.js" defer></script>
+  </head>
+  <body>
+    <h1>Map Game</h1>
+    <section id="game">
+      <div class="location-info">
+        <div class="container">
+          <div id="start-game"><button id="start-btn">Start Game</button></div>
+          <div id="timer">
+            <p id="timing">Time: <span id="time-value"></span></p>
+          </div>
+        </div>
+        <div id="question-container">
+          <h2>Get to know CSUN</h2>
+          <div class="question1">
+            <p>Do you know where Charles H. Noski Auditorium is located?</p>
+            <div class="hidden-response"></div>
+          </div>
+          <div class="question2">
+            <p>Do you know where the Student Recreation Center is located?</p>
+            <div class="hidden-response"></div>
+          </div>
+          <div class="question3">
+            <p>Do you know where the University Library is located?</p>
+            <div class="hidden-response"></div>
+          </div>
+          <div class="question4">
+            <p>Do you know where Jacaranda Hall is located?</p>
+            <div class="hidden-response"></div>
+          </div>
+          <div class="question5">
+            <p>Do you know where Redwood Hall is located?</p>
+            <div class="hidden-response"></div>
+          </div>
+          <div id="scoreboard" class="hidden">
+            <div id="best-time">Best: --:--</div>
+            <div id="attempts"></div>
+          </div>
+          <button id="try-again-btn" class="hidden">Try Again</button>
+        </div>
+      </div>
+      <div id="map"></div>
+    </section>
+    <!-- prettier-ignore -->
+    <script>(g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})
+        ({key: "AIzaSyCLrlF2h7hU2LSi1HtvYTeGxCdxI3qzwBk", v: "beta"});</script>
+  </body>
+</html>
