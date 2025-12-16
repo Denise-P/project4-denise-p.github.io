@@ -1,0 +1,132 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f0f0f0;
+}
+h1 {
+  text-align: center;
+  margin: 20px 20px;
+  border-radius: 30px;
+  padding: 15px 0px;
+  text-shadow: #474343 1px 1px 2px;
+  border: 5px solid rgb(11, 145, 33);
+  background-color: rgb(20, 223, 20);
+  color: white;
+}
+section {
+  display: flex;
+  justify-content: center;
+  height: 700px;
+  margin: 40px 10px;
+  gap: 25px;
+}
+
+.location-info {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 20px;
+  width: 45%;
+}
+
+p {
+  margin-bottom: 10px;
+}
+
+#map {
+  width: 100%; /* The width is the width of the web page */
+  border-radius: 20px;
+  width: 50%;
+}
+
+
+.question1,
+.question2,
+.question3,
+.question4,
+.question5 {
+  display: none;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.hidden-reponse {
+  display: none;
+  margin-top: 10px;
+  padding: 10px;
+}
+
+.retry-button {
+  display: block;
+  margin: 20px auto;
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#start-btn {
+  padding: 10px 20px;
+  font-size: 20px;
+  font-weight: bold;
+  text-shadow: #474343 1px 1px 2px;
+  border: 5px solid rgb(11, 145, 33);
+  background-color: rgb(20, 223, 20);
+  color: white;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+#timing {
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 10px;
+  padding: 15px;
+  background-color: rgb(242, 249, 148);
+  border-radius: 20px;
+  border: 5px solid rgb(11, 145, 33);
+  color: rgb(9, 99, 9);
+}
+
+span {
+  font-size: 20px;
+  margin-top: 10px;
+  padding: 15px;
+}
+
+#scoreboard {
+  margin: 25px;
+  padding: 15px;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  background-color: #f9f9f9;
+  font-size: 16px;
+  text-align: center;
+}
+.hidden { 
+  display: none; 
+}
+
+#try-again-btn {
+  margin-top: 15px;
+  padding: 10px 20px;
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: #474343 1px 1px 2px;
+  border: 5px solid rgb(11, 145, 33);
+  background-color: rgb(20, 223, 20);
+  color: white;
+  border-radius: 20px;
+  cursor: pointer;
+}
