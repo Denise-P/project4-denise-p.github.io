@@ -1,19 +1,25 @@
 let map;
-let hoverRect = null; // blue hover highlight
-let correctRect = null; // green correct area
-let wrongRect = null; // red chosen area (only when wrong)
-let hoveredZone = null; // which building we're currently over
-let locked = false; // lock input after submit
-let gameStarted = false; // track if the game has started
-let gameStartTime = null; // timestamp when the game started
-let timerInterval = null; // interval ID for the timer
+
+let guessMarker = null; // marker for user's guess
+let lastGuessLatLng = null; // last guessed location
+let hoverMarker = null; // marker for hover
+
+let correctRects = []; // ALL green rectangles
+let wrongRects = []; // ALL red rectangles
+
+let locked = false;
+let gameStarted = false;
+let gameStartTime = null;
+let timerInterval = null;
+
+const HITBOX_EXPAND = 0.00025; // “close enough” padding
 
 //limits my map to CSUN area
 const CSUN_BOUNDS = {
   north: 34.2442,
   south: 34.2355,
-  east: -118.5200,
-  west: -118.550,
+  east: -118.52,
+  west: -118.55,
 };
 
 //  Areas I can hover over CSUN (coordinates)
@@ -42,11 +48,11 @@ const BUILDING_ZONES = [
     id: "USU",
     label: "University Student Union",
     bounds: {
-      north: 34.24049024,
-      south: 34.24019024,
-      east: -118.52562214,
-      west: -118.52592214,
-    },
+  north: 34.24055,
+  south: 34.23985,
+  east: -118.52870,
+  west: -118.52955,
+}
   },
   {
     id: "BK",
@@ -181,18 +187,12 @@ function formatTime(totalSeconds) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-// Hover tuning + hitbox size
-const HOVER_THROTTLE_MS = 30;
-let lastHoverTime = 0;
-
-const HITBOX_EXPAND = 0.00025; // make hover easier (you can increase this)
-
 // ---------- UI helpers ----------
 function showQuestion(index) {
   QUESTIONS.forEach((q, i) => {
     const el = document.querySelector(q.selector);
     if (!el) return;
-    el.style.display = i === index ? "block" : "none";
+    el.style.display = i <= index ? "block" : "none";
   });
 }
 
@@ -218,28 +218,26 @@ function expandBounds(bounds, amount = HITBOX_EXPAND) {
   };
 }
 
-function findZoneAtLatLng(latLng) {
+function isLatLngInBounds(latLng, bounds, expand = HITBOX_EXPAND) {
+  const b = expandBounds(bounds, expand);
   const lat = latLng.lat();
   const lng = latLng.lng();
-
-  for (const zone of BUILDING_ZONES) {
-    const b = expandBounds(zone.bounds); // <-- use expanded bounds for detection
-    const inside =
-      lat <= b.north && lat >= b.south && lng <= b.east && lng >= b.west;
-    if (inside) return zone;
-  }
-  return null;
+  return lat <= b.north && lat >= b.south && lng <= b.east && lng >= b.west;
 }
 
-function clearResultRects() {
-  if (correctRect) correctRect.setMap(null);
-  if (wrongRect) wrongRect.setMap(null);
-  correctRect = null;
-  wrongRect = null;
+function boundsAroundLatLng(latLng, amount = 0.00018) {
+  const lat = latLng.lat();
+  const lng = latLng.lng();
+  return {
+    north: lat + amount,
+    south: lat - amount,
+    east: lng + amount,
+    west: lng - amount,
+  };
 }
 
 function drawCorrect(bounds) {
-  correctRect = new google.maps.Rectangle({
+  const rect = new google.maps.Rectangle({
     map,
     bounds,
     strokeColor: "#00AA00",
@@ -249,10 +247,11 @@ function drawCorrect(bounds) {
     fillOpacity: 0.25,
     clickable: false,
   });
+  correctRects.push(rect);
 }
 
 function drawWrong(bounds) {
-  wrongRect = new google.maps.Rectangle({
+  const rect = new google.maps.Rectangle({
     map,
     bounds,
     strokeColor: "#FF0000",
@@ -262,15 +261,35 @@ function drawWrong(bounds) {
     fillOpacity: 0.25,
     clickable: false,
   });
+  wrongRects.push(rect);
+}
+
+function clearAllRects() {
+  correctRects.forEach((r) => r.setMap(null));
+  wrongRects.forEach((r) => r.setMap(null));
+  correctRects = [];
+  wrongRects = [];
 }
 
 // Optional: reset between questions
 function unlockForNextQuestion() {
   locked = false;
-  hoveredZone = null;
-  hoverRect.setVisible(false);
-  clearResultRects();
+  lastGuessLatLng = null;
+  if (guessMarker) guessMarker.setVisible(false);
+  if (hoverMarker) hoverMarker.setVisible(true);
 }
+//bounce animation for marker
+function bounceMarkerOnce(marker, duration = 700) {
+  if (!marker) return;
+
+  marker.setAnimation(google.maps.Animation.BOUNCE);
+
+  setTimeout(() => {
+    marker.setAnimation(null);
+  }, duration);
+}
+
+
 
 // ---------- Main ----------
 async function initMap() {
@@ -281,78 +300,87 @@ async function initMap() {
     zoom: 3,
     mapId: "2b8d6acafe8e057c94f2de19",
     restriction: { latLngBounds: CSUN_BOUNDS, strictBounds: true },
-    disableDoubleClickZoom: true,
     disableDefaultUI: true,
-
     streetViewControl: false,
     mapTypeControl: false,
     fullscreenControl: false,
     zoomControl: false,
-
-    gestureHandling: "none", // blocks touch + mouse gestures
+    gestureHandling: "none",
     draggable: false,
     scrollwheel: false,
     disableDoubleClickZoom: true,
     keyboardShortcuts: false,
-
-    // Optional: keep icons from being clickable
     clickableIcons: false,
   });
 
   // Start on question 1
   showQuestion(currentQuestionIndex);
 
-  // Blue hover rectangle (hidden until you hover a zone)
-  hoverRect = new google.maps.Rectangle({
+  // --- GUESS MARKER ---
+
+  google.maps.Animation.BOUNCE;
+
+  guessMarker = new google.maps.Marker({
     map,
-    bounds: expandBounds(BUILDING_ZONES[0]?.bounds ?? CSUN_BOUNDS),
-    strokeColor: "#0066FF",
-    strokeOpacity: 0.9,
-    strokeWeight: 2,
-    fillColor: "#0066FF",
-    fillOpacity: 0.2,
-    clickable: false,
+    position: map.getCenter(),
+    draggable: true, // optional
     visible: false,
   });
 
-  // Hover selection
-  map.addListener("mousemove", (e) => {
-    if (!gameStarted || locked) return;
-    if (locked) return;
-
-    const now = Date.now();
-    if (now - lastHoverTime < HOVER_THROTTLE_MS) return;
-    lastHoverTime = now;
-
-    const zone = findZoneAtLatLng(e.latLng);
-    if (!zone) {
-      hoveredZone = null;
-      hoverRect.setVisible(false);
-      return;
-    }
-
-    if (!hoveredZone || hoveredZone.id !== zone.id) {
-      hoveredZone = zone;
-      hoverRect.setBounds(expandBounds(zone.bounds));
-      hoverRect.setVisible(true);
-    }
+  guessMarker.addListener("dragend", (e) => {
+    lastGuessLatLng = e.latLng;
   });
 
-  // Double click = submit answer
+  hoverMarker = new google.maps.Marker({
+    map,
+    position: map.getCenter(),
+    opacity: 0.5, // ghost look
+    clickable: false,
+    zIndex: 999,
+  });
+  map.addListener("mousemove", (e) => {
+    if (!gameStarted || locked) return;
+
+    hoverMarker.setPosition(e.latLng);
+  });
+
+  map.addListener("click", (e) => {
+    if (!gameStarted || locked) return;
+
+    lastGuessLatLng = e.latLng;
+
+    // place real marker
+    guessMarker.setPosition(e.latLng);
+    guessMarker.setVisible(true);
+
+    // hide hover preview
+    hoverMarker.setVisible(false);
+  });
+
+  // Click = place/move marker
+  map.addListener("click", (e) => {
+    if (!gameStarted || locked) return;
+
+    lastGuessLatLng = e.latLng;
+    guessMarker.setPosition(e.latLng);
+    guessMarker.setVisible(true);
+  });
+
+  // Double click = submit guess
   map.addListener("dblclick", () => {
     if (!gameStarted || locked) return;
-    if (locked) return;
 
-    if (!hoveredZone) {
+    if (!lastGuessLatLng) {
       writeResponse(
         currentQuestionIndex,
-        "Hover over a building zone first, then double-click to check!"
+        "Click to place your marker first, then double-click to submit!"
       );
       return;
     }
 
     locked = true;
-    clearResultRects();
+
+    bounceMarkerOnce(guessMarker);
 
     const targetId = QUESTIONS[currentQuestionIndex].targetId;
     const targetZone = BUILDING_ZONES.find((z) => z.id === targetId);
@@ -363,52 +391,43 @@ async function initMap() {
       return;
     }
 
-    const isCorrect = hoveredZone.id === targetId;
+    const isCorrect = isLatLngInBounds(lastGuessLatLng, targetZone.bounds);
 
     // Always show correct location in GREEN
     drawCorrect(targetZone.bounds);
 
     if (isCorrect) {
       writeResponse(currentQuestionIndex, "✅ That's correct!");
-      hoverRect.setVisible(false);
-
-      // go to next question
-      currentQuestionIndex++;
-
-      if (currentQuestionIndex < QUESTIONS.length) {
-        // small pause optional (or remove this timeout)
-        setTimeout(() => {
-          unlockForNextQuestion();
-          showQuestion(currentQuestionIndex);
-        }, 6000);
-      } else {
-        gameEndTime = Date.now();
-        stopElapsedTimer();
-
-        const totalSeconds = Math.floor((gameEndTime - gameStartTime) / 1000);
-
-        addAttempt(totalSeconds);
-        showScoreboard();
-
-        // show Try Again button
-        document.getElementById("scoreboard").classList.remove("hidden");
-        document.getElementById("try-again-btn").classList.remove("hidden");
-
-        writeResponse(
-          QUESTIONS.length - 1,
-          "✅ That's correct! 🎉 You finished all questions!"
-        );
-      }
     } else {
-      // Wrong: show chosen area in RED
-      drawWrong(hoveredZone.bounds);
+      // Wrong: red box around the marker (persists)
+      drawWrong(boundsAroundLatLng(lastGuessLatLng));
       writeResponse(
         currentQuestionIndex,
-        `❌ You are incorrect. This is not : ${targetZone.label} . This is building is ${hoveredZone.label}. 
-        Please click on the correct location, highlighted by the green square .`
+        `❌ Incorrect. The correct location is highlighted in green: ${targetZone.label}`
       );
-      hoverRect.setVisible(false);
-      locked = false;
+    }
+
+    // go to next question
+    currentQuestionIndex++;
+
+    if (currentQuestionIndex < QUESTIONS.length) {
+      setTimeout(() => {
+        unlockForNextQuestion();
+        showQuestion(currentQuestionIndex);
+      }, 600);
+    } else {
+      const gameEndTime = Date.now();
+      stopElapsedTimer();
+
+      const totalSeconds = Math.floor((gameEndTime - gameStartTime) / 1000);
+      addAttempt(totalSeconds);
+      showScoreboard();
+      if (hoverMarker) hoverMarker.setVisible(false);
+
+      document.getElementById("scoreboard").classList.remove("hidden");
+      document.getElementById("try-again-btn").classList.remove("hidden");
+
+      writeResponse(QUESTIONS.length - 1, "🎉 Finished all questions!");
     }
   });
 }
@@ -485,14 +504,21 @@ function resetResponses() {
 initMap();
 
 //Try Again button handler
-
 document.getElementById("try-again-btn").addEventListener("click", () => {
-  // Hide scoreboard
+  // Clear marker + guesses
+  lastGuessLatLng = null;
+  if (guessMarker) guessMarker.setVisible(false);
+
+  // Clear ALL boxes
+  clearAllRects();
+
+  // Hide scoreboard + button
   document.getElementById("scoreboard").classList.add("hidden");
-  //Hide Try Again button
   document.getElementById("try-again-btn").classList.add("hidden");
-  //Clear responses
+
+  // Clear responses
   resetResponses();
+
   // Reset timer
   stopElapsedTimer();
   gameStartTime = Date.now();
@@ -501,20 +527,9 @@ document.getElementById("try-again-btn").addEventListener("click", () => {
   // Reset game state
   currentQuestionIndex = 0;
   locked = false;
-  hoveredZone = null;
 
-  if (typeof clearResultRects === "function") {
-    clearResultRects();
-  }
-
-  if (hoverRect) {
-    hoverRect.setVisible(false);
-  }
-
-  // Hide Try Again button
-  document.getElementById("try-again-btn").classList.add("hidden");
+  if (hoverMarker) hoverMarker.setVisible(true);
 
   // Show first question again
   showQuestion(currentQuestionIndex);
 });
-
