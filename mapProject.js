@@ -329,19 +329,19 @@ async function initMap() {
     //Center map
     center: { lat: 34.240167982948606, lng: -118.5291831979989 },
     zoom: 3, //zoom level for map
-    mapId: "2b8d6acafe8e057c94f2de19",//map id
-    restriction: { latLngBounds: CSUN_BOUNDS, strictBounds: true },// boundry restriction
-    disableDefaultUI: true,//disable UI features
-    streetViewControl: false,// disable view control
-    mapTypeControl: false,//disable type control
-    fullscreenControl: false,// disable screen control
-    zoomControl: false,//disable zoom control
-    gestureHandling: "none",// disable gesture handling
-    draggable: false,// disable drag
-    scrollwheel: false,//disable scroll wheel
+    mapId: "6769293756103cdbba70d2a3", //map id
+    restriction: { latLngBounds: CSUN_BOUNDS, strictBounds: true }, // boundry restriction
+    disableDefaultUI: true, //disable UI features
+    streetViewControl: false, // disable view control
+    mapTypeControl: false, //disable type control
+    fullscreenControl: false, // disable screen control
+    zoomControl: false, //disable zoom control
+    gestureHandling: "none", // disable gesture handling
+    draggable: false, // disable drag
+    scrollwheel: false, //disable scroll wheel
     disableDoubleClickZoom: true, //disable double click zoom
-    keyboardShortcuts: false,//disable keybaord shortcuts
-    clickableIcons: false,// disable clickable icons
+    keyboardShortcuts: false, //disable keybaord shortcuts
+    clickableIcons: false, // disable clickable icons
   });
 
   // Start on question 1
