@@ -1,4 +1,4 @@
-let map;
+let map; //create map
 
 let guessMarker = null; // marker for user's guess
 let lastGuessLatLng = null; // last guessed location
@@ -7,10 +7,10 @@ let hoverMarker = null; // marker for hover
 let correctRects = []; // ALL green rectangles
 let wrongRects = []; // ALL red rectangles
 
-let locked = false;
-let gameStarted = false;
-let gameStartTime = null;
-let timerInterval = null;
+let locked = false;  //Prevent game from starting
+let gameStarted = false;//game does not start until this boolean is true
+let gameStartTime = null;//Used to calculate total elapsed time
+let timerInterval = null;  // Hold the time interval
 
 const HITBOX_EXPAND = 0.00025; // “close enough” padding
 
@@ -31,28 +31,28 @@ const BUILDING_ZONES = [
       north: 34.24055,
       south: 34.23985,
       east: -118.5287,
-      west: -118.52955,
+      west: -118.52985,
     },
   },
   {
     id: "NA",
     label: "Charles H. Noski Auditorium",
     bounds: {
-      north: 34.24261512,
-      south: 34.24221512,
-      east: -118.53080062,
-      west: -118.53120062,
+      north: 34.24241, // highest lat
+      south: 34.24212, // lowest lat
+      east: -118.53111, // largest lng
+      west: -118.53144, // smallest lng
     },
   },
   {
     id: "USU",
     label: "University Student Union",
     bounds: {
-  north: 34.24055,
-  south: 34.23985,
-  east: -118.52870,
-  west: -118.52955,
-}
+      north: 34.24049024,
+      south: 34.24019024,
+      east: -118.52562214,
+      west: -118.52592214,
+    },
   },
   {
     id: "BK",
@@ -108,10 +108,10 @@ const BUILDING_ZONES = [
     id: "RE",
     label: "Redwood Hall",
     bounds: {
-      north: 34.24214407,
-      south: 34.24184407,
-      east: -118.52627934,
-      west: -118.52657934,
+      north: 34.24198,
+      south: 34.24163,
+      east: -118.52608,
+      west: -118.52647,
     },
   },
   {
@@ -128,15 +128,15 @@ const BUILDING_ZONES = [
     id: "JD",
     label: "Jacaranda Hall",
     bounds: {
-      north: 34.24134569,
+      north: 34.24214869,
       south: 34.24104569,
-      east: -118.52875205,
-      west: -118.52905205,
+      east: -118.52775205,
+      west: -118.52945205,
     },
   },
 ];
 
-//  Questions (match your HTML: .question1, .question2, ...)
+//  Questions array
 let currentQuestionIndex = 0;
 const QUESTIONS = [
   { selector: ".question1", targetId: "NA" },
@@ -148,26 +148,34 @@ const QUESTIONS = [
 
 //---------- Timer helpers ----------
 function startElapsedTimer() {
+  // retrives time div
   const timeEl = document.getElementById("time-value");
 
+  //
   timerInterval = setInterval(() => {
+    //check if game started
     if (!gameStartTime) return;
+    //Runs timer
     const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+    //Displays time
     timeEl.textContent = formatTime(elapsed);
   }, 100);
 }
 
+//Stop timer
 function stopElapsedTimer() {
+  // Clears time intervals
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = null;
 }
 
+// Listen for a click on the "Start" button to begin the game
 document.getElementById("start-btn").addEventListener("click", () => {
   if (gameStarted) return;
 
-  gameStarted = true;
+  gameStarted = true; //starts game
   locked = false; // allow map interaction
-  currentQuestionIndex = 0;
+  currentQuestionIndex = 0; // counts the number of correct answers
 
   // hide questions
   document.getElementById("question-container").style.display = "block";
@@ -182,34 +190,43 @@ document.getElementById("start-btn").addEventListener("click", () => {
 
 //---------- Time Format helper ----------
 function formatTime(totalSeconds) {
+  //calculate mintues
   const minutes = Math.floor(totalSeconds / 60);
+  //calculate seconds
   const seconds = Math.floor(totalSeconds % 60);
+  //Format time 00:00
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-// ---------- UI helpers ----------
+// ---------- Display Questions helpers ----------
 function showQuestion(index) {
   QUESTIONS.forEach((q, i) => {
+    //Select questions from p
     const el = document.querySelector(q.selector);
     if (!el) return;
+    //show questions
     el.style.display = i <= index ? "block" : "none";
   });
 }
 
+//  ---------- Response helpers ----------
 function writeResponse(index, text) {
+  //Access question array
   const qEl = document.querySelector(QUESTIONS[index].selector);
-  if (!qEl) return;
+  if (!qEl) return; // Questions are not visible
 
   // your HTML uses ".hidden-response"
   const out = qEl.querySelector(".hidden-response");
   if (!out) return;
-
+  //make question visible
   out.classList.remove("hidden");
+  //Insert response
   out.textContent = text;
 }
 
 // ---------- Map helpers ----------
 function expandBounds(bounds, amount = HITBOX_EXPAND) {
+  //expand the bounds of boxes
   return {
     north: bounds.north + amount,
     south: bounds.south - amount,
@@ -218,14 +235,19 @@ function expandBounds(bounds, amount = HITBOX_EXPAND) {
   };
 }
 
+// ---------- Check Bounds helper ------------
 function isLatLngInBounds(latLng, bounds, expand = HITBOX_EXPAND) {
   const b = expandBounds(bounds, expand);
+  // Extract latitude and longitude values from the LatLng object
   const lat = latLng.lat();
   const lng = latLng.lng();
+  //Return bounds
   return lat <= b.north && lat >= b.south && lng <= b.east && lng >= b.west;
 }
 
+// ---------- Create Red Rectangle --------------
 function boundsAroundLatLng(latLng, amount = 0.00018) {
+  // Get the latitude and longitude of the point
   const lat = latLng.lat();
   const lng = latLng.lng();
   return {
@@ -236,20 +258,22 @@ function boundsAroundLatLng(latLng, amount = 0.00018) {
   };
 }
 
+// ------- Draw Rectangle helper --------
 function drawCorrect(bounds) {
   const rect = new google.maps.Rectangle({
-    map,
-    bounds,
+    map, // Map instance to draw on
+    bounds, // Geographic bounds of the correct area
     strokeColor: "#00AA00",
     strokeOpacity: 0.9,
     strokeWeight: 2,
     fillColor: "#00AA00",
     fillOpacity: 0.25,
-    clickable: false,
+    clickable: false, // Prevent interaction with the rectangle
   });
-  correctRects.push(rect);
+  correctRects.push(rect); // Store the rectangle
 }
 
+// ------- Draw Rectangle helper --------
 function drawWrong(bounds) {
   const rect = new google.maps.Rectangle({
     map,
@@ -261,65 +285,71 @@ function drawWrong(bounds) {
     fillOpacity: 0.25,
     clickable: false,
   });
-  wrongRects.push(rect);
+  wrongRects.push(rect); // Store the rectangle
 }
 
+// ----------- Clear Rectangle helper ---------
 function clearAllRects() {
+  // Remove each rectangle from the map
   correctRects.forEach((r) => r.setMap(null));
   wrongRects.forEach((r) => r.setMap(null));
   correctRects = [];
   wrongRects = [];
 }
 
-// Optional: reset between questions
+// ---------------Next Question helper-----------------
 function unlockForNextQuestion() {
+  //Enable map interation
   locked = false;
+  // clear pervious locations
   lastGuessLatLng = null;
+  //hide users guess marker
   if (guessMarker) guessMarker.setVisible(false);
+  // show the hover preview marker 
   if (hoverMarker) hoverMarker.setVisible(true);
 }
-//bounce animation for marker
+// ---------bounce animation helper----------
 function bounceMarkerOnce(marker, duration = 700) {
+  // Checks if marker exists
   if (!marker) return;
-
+  // use maps bounce animations
   marker.setAnimation(google.maps.Animation.BOUNCE);
-
+// timer durations
   setTimeout(() => {
     marker.setAnimation(null);
   }, duration);
 }
 
-
-
 // ---------- Main ----------
 async function initMap() {
+  // Load the Google Maps library 
   const { Map } = await google.maps.importLibrary("maps");
-
+  //Create map in html
   map = new Map(document.getElementById("map"), {
+    //Center map
     center: { lat: 34.240167982948606, lng: -118.5291831979989 },
-    zoom: 3,
-    mapId: "2b8d6acafe8e057c94f2de19",
-    restriction: { latLngBounds: CSUN_BOUNDS, strictBounds: true },
-    disableDefaultUI: true,
-    streetViewControl: false,
-    mapTypeControl: false,
-    fullscreenControl: false,
-    zoomControl: false,
-    gestureHandling: "none",
-    draggable: false,
-    scrollwheel: false,
-    disableDoubleClickZoom: true,
-    keyboardShortcuts: false,
-    clickableIcons: false,
+    zoom: 3, //zoom level for map
+    mapId: "2b8d6acafe8e057c94f2de19",//map id
+    restriction: { latLngBounds: CSUN_BOUNDS, strictBounds: true },// boundry restriction
+    disableDefaultUI: true,//disable UI features
+    streetViewControl: false,// disable view control
+    mapTypeControl: false,//disable type control
+    fullscreenControl: false,// disable screen control
+    zoomControl: false,//disable zoom control
+    gestureHandling: "none",// disable gesture handling
+    draggable: false,// disable drag
+    scrollwheel: false,//disable scroll wheel
+    disableDoubleClickZoom: true, //disable double click zoom
+    keyboardShortcuts: false,//disable keybaord shortcuts
+    clickableIcons: false,// disable clickable icons
   });
 
   // Start on question 1
   showQuestion(currentQuestionIndex);
-
-  // --- GUESS MARKER ---
-
+//
   google.maps.Animation.BOUNCE;
 
+  // --- GUESS MARKER ---
   guessMarker = new google.maps.Marker({
     map,
     position: map.getCenter(),
@@ -334,7 +364,7 @@ async function initMap() {
   hoverMarker = new google.maps.Marker({
     map,
     position: map.getCenter(),
-    opacity: 0.5, // ghost look
+    opacity: 0.5,
     clickable: false,
     zIndex: 999,
   });
@@ -368,8 +398,9 @@ async function initMap() {
 
   // Double click = submit guess
   map.addListener("dblclick", () => {
+    // If the game isn't running or the question is locked, ignore submissions
     if (!gameStarted || locked) return;
-
+    // If the user never placed a marker, remind them and stop
     if (!lastGuessLatLng) {
       writeResponse(
         currentQuestionIndex,
@@ -379,10 +410,12 @@ async function initMap() {
     }
 
     locked = true;
-
+    // bounce the placed marker briefly
     bounceMarkerOnce(guessMarker);
 
+    // Get the target building ID for the current question
     const targetId = QUESTIONS[currentQuestionIndex].targetId;
+    // Find the building zone object that matches the target ID
     const targetZone = BUILDING_ZONES.find((z) => z.id === targetId);
 
     if (!targetZone) {
@@ -395,11 +428,11 @@ async function initMap() {
 
     // Always show correct location in GREEN
     drawCorrect(targetZone.bounds);
-
+    // Safety check: if target zone is missing
     if (isCorrect) {
       writeResponse(currentQuestionIndex, "✅ That's correct!");
     } else {
-      // Wrong: red box around the marker (persists)
+      // Wrong: red box around the marker
       drawWrong(boundsAroundLatLng(lastGuessLatLng));
       writeResponse(
         currentQuestionIndex,
@@ -409,24 +442,27 @@ async function initMap() {
 
     // go to next question
     currentQuestionIndex++;
-
+    // If there are more questions, unlock and show the next question after a short delay
     if (currentQuestionIndex < QUESTIONS.length) {
       setTimeout(() => {
         unlockForNextQuestion();
         showQuestion(currentQuestionIndex);
       }, 600);
     } else {
+      // Game finished: stop timer and record score
       const gameEndTime = Date.now();
       stopElapsedTimer();
-
+      // Compute total time in seconds
       const totalSeconds = Math.floor((gameEndTime - gameStartTime) / 1000);
+      // Save this attempt and update scoreboard
       addAttempt(totalSeconds);
       showScoreboard();
+      // Hide hover marker since the game is over
       if (hoverMarker) hoverMarker.setVisible(false);
-
+      // Reveal scoreboard + try again button
       document.getElementById("scoreboard").classList.remove("hidden");
       document.getElementById("try-again-btn").classList.remove("hidden");
-
+      // Show final completion message
       writeResponse(QUESTIONS.length - 1, "🎉 Finished all questions!");
     }
   });
@@ -434,7 +470,7 @@ async function initMap() {
 
 const ATTEMPTS_KEY = "csunQuizAttempts"; // stores array of attempts
 const MAX_ATTEMPTS = 5; // max attempts to keep
-
+// Load attempts from localStorage
 function loadAttempts() {
   try {
     return JSON.parse(localStorage.getItem(ATTEMPTS_KEY)) ?? [];
@@ -442,11 +478,11 @@ function loadAttempts() {
     return [];
   }
 }
-
+// Save attempts back into localStorage as a JSON string
 function saveAttempts(attempts) {
   localStorage.setItem(ATTEMPTS_KEY, JSON.stringify(attempts));
 }
-
+// Add a new attempt to the front of the list
 function addAttempt(seconds) {
   const attempts = loadAttempts();
   attempts.unshift({
@@ -455,15 +491,16 @@ function addAttempt(seconds) {
   });
   saveAttempts(attempts.slice(0, MAX_ATTEMPTS));
 }
-
+// Return the best (fastest) attempt time in seconds
 function getBestSeconds() {
   const attempts = loadAttempts();
   if (attempts.length === 0) return null;
   return Math.min(...attempts.map((a) => a.seconds));
 }
 
+// Updates the scoreboard UI with best time and list of recent attempts
 function showScoreboard() {
-  // Best
+  // Update best time display
   const bestEl = document.getElementById("best-time");
   const best = getBestSeconds();
   if (bestEl)
@@ -473,13 +510,13 @@ function showScoreboard() {
   // Attempts list
   const attemptsEl = document.getElementById("attempts");
   if (!attemptsEl) return;
-
+  // Update the attempts list display
   const attempts = loadAttempts();
   if (attempts.length === 0) {
     attemptsEl.textContent = "Attempts: none yet";
     return;
   }
-
+  // Build HTML list of attempts
   attemptsEl.innerHTML = `
     <h4>Attempts (latest first)</h4>
       ${attempts
@@ -495,6 +532,7 @@ function showScoreboard() {
 }
 //---------- Reset responses helper ----------
 function resetResponses() {
+  //get hidden response class
   document.querySelectorAll(".hidden-response").forEach((el) => {
     el.textContent = ""; // clear old text
     el.classList.add("hidden"); // hide it again
